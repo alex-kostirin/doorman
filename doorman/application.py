@@ -5,11 +5,11 @@ from flask import Flask, render_template
 
 from doorman.api import blueprint as api
 from doorman.assets import assets
-from doorman.manage import blueprint as backend
 from doorman.extensions import (
     bcrypt, csrf, db, debug_toolbar, ldap_manager, log_tee, login_manager,
     mail, make_celery, migrate, rule_manager, sentry
 )
+from doorman.manage import blueprint as backend
 from doorman.settings import ProdConfig
 from doorman.tasks import celery
 from doorman.utils import get_node_health, pretty_field, pretty_operator, render_column
@@ -91,12 +91,15 @@ def register_loggers(app):
 
 def register_errorhandlers(app):
     """Register error handlers."""
+
     def render_error(error):
         """Render error template."""
         # If a HTTPException, pull the `code` attribute; default to 500
         error_code = getattr(error, 'code', 500)
         if 'DOORMAN_NO_MANAGER' in os.environ:
             return '', 400
+        if error_code not in [401, 403, 404, 500]:
+            error_code = 500
         return render_template('{0}.html'.format(error_code)), error_code
 
     for errcode in [401, 403, 404, 500]:

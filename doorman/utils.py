@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple
-from operator import itemgetter
-from os.path import basename, join, splitext
 import datetime as dt
 import json
-import pkg_resources
 import sqlite3
 import string
 import threading
+from collections import namedtuple
+from operator import itemgetter
+from os.path import basename, join, splitext
+from time import strptime
 
+import pkg_resources
 import six
 from flask import current_app, flash
 from jinja2 import Markup, Template
@@ -19,9 +20,7 @@ from doorman.models import (
     Node, Pack, Query, ResultLog, querypacks,
 )
 
-
 Field = namedtuple('Field', ['name', 'action', 'columns', 'timestamp'])
-
 
 # Read DDL statements from our package
 schema = pkg_resources.resource_string('doorman', join('resources', 'osquery_schema.sql'))
@@ -72,7 +71,7 @@ def assemble_schedule(node):
 def assemble_packs(node):
     packs = {}
     for pack in node.packs.join(querypacks).join(Query) \
-        .options(db.contains_eager(Pack.queries)).all():
+            .options(db.contains_eager(Pack.queries)).all():
         packs[pack.name] = pack.to_dict()
     return packs
 
@@ -89,13 +88,13 @@ def assemble_distributed_queries(node):
     query = db.session.query(DistributedQueryTask) \
         .join(DistributedQuery) \
         .filter(
-            DistributedQueryTask.node == node,
-            DistributedQueryTask.status == DistributedQueryTask.NEW,
-            DistributedQuery.not_before < now,
-        ).options(
-            db.lazyload('*'),
-            db.contains_eager(DistributedQueryTask.distributed_query)
-        )
+        DistributedQueryTask.node == node,
+        DistributedQueryTask.status == DistributedQueryTask.NEW,
+        DistributedQuery.not_before < now,
+    ).options(
+        db.lazyload('*'),
+        db.contains_eager(DistributedQueryTask.distributed_query)
+    )
 
     queries = {}
     for task in query:
@@ -213,6 +212,7 @@ PRETTY_OPERATORS = {
     'not_matches_regex': "doesn't match regex",
 }
 
+
 def pretty_operator(cond):
     return PRETTY_OPERATORS.get(cond, cond)
 
@@ -223,6 +223,7 @@ PRETTY_FIELDS = {
     'host_identifier': 'Host identifier',
     'timestamp': 'Timestamp',
 }
+
 
 def pretty_field(field):
     return PRETTY_FIELDS.get(field, field)
@@ -290,7 +291,7 @@ def learn_from_result(result, node):
     capture_columns = set(
         map(itemgetter(0),
             current_app.config['DOORMAN_CAPTURE_NODE_INFO']
-        )
+            )
     )
 
     if not capture_columns:
@@ -346,7 +347,6 @@ def extract_results(result):
         return
 
     timefmt = '%a %b %d %H:%M:%S %Y UTC'
-    strptime = dt.datetime.strptime
 
     for entry in result['data']:
         name = entry['name']
@@ -395,7 +395,6 @@ def flash_errors(form):
 
 def get_paginate_options(request, model, choices, existing_query=None,
                          default='id', page=1, max_pp=20, default_sort='asc'):
-
     try:
         per_page = int(request.args.get('pp', max_pp))
     except Exception:
