@@ -168,3 +168,6 @@ doorman/static/public/
 # Avoid commiting secrets
 certificate.crt
 private.key
+
+# PyCharm
+.idea
