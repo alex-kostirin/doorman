@@ -11,6 +11,7 @@ from doorman.utils import extract_results
 class LogWSGIPlugin(AbstractLogsPlugin):
     def __init__(self, config):
         self.fp = wsgi_errors_stream
+        self.minimum_severity = config.get('DOORMAN_MINIMUM_OSQUERY_LOG_LEVEL')
 
     @property
     def name(self):
@@ -20,12 +21,13 @@ class LogWSGIPlugin(AbstractLogsPlugin):
         if self.fp is None:
             return
 
-        host_identifier = kwargs.get('host_identifier')
+        host_identifier = kwargs.get('host_identifier', None)
         created = dt.datetime.utcnow().isoformat()
 
         try:
             for item in data.get('data', []):
-
+                if int(item['severity']) < self.minimum_severity:
+                    continue
                 if 'created' in item:
                     item['created'] = item['created'].isoformat()
 
