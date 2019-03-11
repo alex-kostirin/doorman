@@ -1,80 +1,78 @@
 # -*- coding: utf-8 -*-
 import datetime as dt
-import time
+from json import dump as json_dump
 
 from flask.logging import wsgi_errors_stream
 
 from doorman.plugins import AbstractLogsPlugin
-from doorman.utils import extract_results, quote
+from doorman.utils import extract_results
 
 
 class LogWSGIPlugin(AbstractLogsPlugin):
     def __init__(self, config):
+        self.minimum_severity = config.get('DOORMAN_MINIMUM_OSQUERY_LOG_LEVEL')
         self.fp = wsgi_errors_stream
 
     @property
     def name(self):
         return "wsgi"
 
-    def join_fields(self, fields):
-        parts = []
-        for name, val in fields.items():
-            if not isinstance(val, str):
-                val = str(val)
-            parts.append(name + '=' + quote(val))
-
-        return ', '.join(parts)
-
     def handle_status(self, data, **kwargs):
         if self.fp is None:
             return
 
-        # Write each status log on a different line
+        fp = self.fp
+        minimum_severity = self.minimum_severity
+
+        host_identifier = kwargs.get('host_identifier')
+        created = dt.datetime.utcnow().isoformat()
+
         try:
             for item in data.get('data', []):
-                fields = {}
-                fields.update(kwargs)
-                fields.update({
+                if int(item['severity']) < minimum_severity:
+                    continue
+
+                if 'created' in item:
+                    item['created'] = item['created'].isoformat()
+
+                json_dump({
+                    '@version': 1,
+                    '@host_identifier': host_identifier,
+                    '@timestamp': item.get('created', created),
+                    '@message': item.get('message', ''),
+                    'log_type': 'status',
                     'line': item.get('line', ''),
                     'message': item.get('message', ''),
                     'severity': item.get('severity', ''),
                     'filename': item.get('filename', ''),
-                    'version': item.get('version'),  # be null
-                })
-
-                if 'created' in item:
-                    fields['created'] = time.mktime(item['created'].timetuple())
-                else:
-                    fields['created'] = time.mktime(dt.datetime.utcnow().timetuple())
-
-                self.fp.write(self.join_fields(fields) + '\n')
+                    'osquery_version': item.get('version'),  # be null
+                    'created': created,
+                }, fp)
+                fp.write('\r\n')
         finally:
-            self.fp.flush()
+            fp.flush()
 
     def handle_result(self, data, **kwargs):
         if self.fp is None:
             return
 
-        # Process each result individually
+        fp = self.fp
+
+        host_identifier = kwargs.get('host_identifier')
+        created = dt.datetime.utcnow().isoformat()
+
         try:
             for item in extract_results(data):
-                fields = {}
-                fields.update(kwargs)
-
-                if item.timestamp:
-                    timestamp = time.mktime(item.timestamp.timetuple())
-                else:
-                    timestamp = time.mktime(dt.datetime.utcnow.timetuple())
-
-                fields.update(name=item.name, timestamp=timestamp)
-
-                base = self.join_fields(fields)
-
-                # Write each added/removed entry on a different line
-                curr_fields = {'result_type': item.action}
-                for key, val in item.columns.items():
-                    curr_fields['_'.join([item.action, key])] = val
-
-                self.fp.write(base + ', ' + self.join_fields(curr_fields) + '\n')
+                json_dump({
+                    '@version': 1,
+                    '@host_identifier': host_identifier,
+                    '@timestamp': item.timestamp.isoformat(),
+                    'log_type': 'result',
+                    'action': item.action,
+                    'columns': item.columns,
+                    'name': item.name,
+                    'created': created,
+                }, fp)
+                fp.write('\r\n')
         finally:
-            self.fp.flush()
+            fp.flush()
