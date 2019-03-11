@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime as dt
-from json import dump as json_dump
+from json import dumps as json_dump
 
 from flask.logging import wsgi_errors_stream
 
@@ -29,7 +29,7 @@ class LogWSGIPlugin(AbstractLogsPlugin):
                 if 'created' in item:
                     item['created'] = item['created'].isoformat()
 
-                json_dump({
+                log_line = json_dump({
                     '@version': 1,
                     '@host_identifier': host_identifier,
                     '@timestamp': item.get('created', created),
@@ -41,8 +41,8 @@ class LogWSGIPlugin(AbstractLogsPlugin):
                     'filename': item.get('filename', ''),
                     'osquery_version': item.get('version'),  # be null
                     'created': created,
-                }, self.fp)
-                self.fp.write('\r\n')
+                })
+                self.fp.write(log_line + '\r\n')
         finally:
             self.fp.flush()
 
@@ -50,12 +50,12 @@ class LogWSGIPlugin(AbstractLogsPlugin):
         if self.fp is None:
             return
 
-        host_identifier = kwargs.get('host_identifier')
+        host_identifier = kwargs.get('host_identifier', None)
         created = dt.datetime.utcnow().isoformat()
 
         try:
             for item in extract_results(data):
-                json_dump({
+                log_line = json_dump({
                     '@version': 1,
                     '@host_identifier': host_identifier,
                     '@timestamp': item.timestamp.isoformat(),
@@ -64,7 +64,7 @@ class LogWSGIPlugin(AbstractLogsPlugin):
                     'columns': item.columns,
                     'name': item.name,
                     'created': created,
-                }, self.fp)
-                self.fp.write('\r\n')
+                })
+                self.fp.write(log_line + '\r\n')
         finally:
             self.fp.flush()
