@@ -7,7 +7,6 @@ import threading
 from collections import namedtuple
 from operator import itemgetter
 from os.path import basename, join, splitext
-from time import strptime
 
 import pkg_resources
 import six
@@ -350,7 +349,7 @@ def extract_results(result):
 
     for entry in result['data']:
         name = entry['name']
-        timestamp = strptime(entry['calendarTime'], timefmt)
+        timestamp = dt.datetime.strptime(entry['calendarTime'], timefmt)
 
         if 'columns' in entry:
             yield Field(name=name,
