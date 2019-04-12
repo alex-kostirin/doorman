@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from binascii import b2a_hex
 import datetime as dt
 import os
+from binascii import b2a_hex
 
 
 class Config(object):
@@ -57,7 +57,7 @@ class Config(object):
     # osquery.  If you use any custom extensions, you'll need to add the
     # corresponding schema here so you can use them in queries.
     DOORMAN_EXTRA_SCHEMA = [
-        #'CREATE TABLE example_extension_table(thing1 INTEGER, thing2 TEXT);',
+        # 'CREATE TABLE example_extension_table(thing1 INTEGER, thing2 TEXT);',
     ]
 
     BROKER_URL = 'redis://localhost:6379/0'
@@ -73,6 +73,13 @@ class Config(object):
             'schedule': 86400,
         },
     }
+
+    # You can disable writing status and result logs at all, or only to database
+    # (for example in the cases you are using log parses and all that you're need is logs)
+    DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG = True
+    DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG_TO_DB = True
+    DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG = True
+    DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG_TO_DB = True
 
     # You can specify a set of custom logger plugins here.  These plugins will
     # be called for every status or result log that is received, and can
@@ -221,7 +228,6 @@ class Config(object):
 
 
 class ProdConfig(Config):
-
     ENV = 'prod'
     DEBUG = False
     DEBUG_TB_ENABLED = False
@@ -256,7 +262,6 @@ class DevConfig(Config):
     DOORMAN_ENROLL_SECRET = [
         'secret',
     ]
-
 
 
 class TestConfig(Config):
@@ -334,7 +339,6 @@ if os.environ.get('DYNO'):
             }),
 
         }
-
 
 # choose proper configuration based on environment -
 # this is both for manage.py and for worker.py
