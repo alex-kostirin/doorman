@@ -237,26 +237,28 @@ def logger(node=None):
     if current_app.debug:
         current_app.logger.debug(json.dumps(data, indent=2))
 
-    if log_type == 'status' and current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG', True):
-        log_tee.handle_status(data, host_identifier=node.host_identifier)
-        status_logs = []
-        if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG_TO_DB', True):
-            for item in data.get('data', []):
-                if int(item['severity']) < log_level:
-                    continue
-                status_logs.append(StatusLog(node_id=node.id, **item))
-            else:
-                db.session.add(node)
-                db.session.bulk_save_objects(status_logs)
-                db.session.commit()
+    if log_type == 'status':
+        if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG', True):
+            log_tee.handle_status(data, host_identifier=node.host_identifier)
+            status_logs = []
+            if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_STATUS_LOG_TO_DB', True):
+                for item in data.get('data', []):
+                    if int(item['severity']) < log_level:
+                        continue
+                    status_logs.append(StatusLog(node_id=node.id, **item))
+                else:
+                    db.session.add(node)
+                    db.session.bulk_save_objects(status_logs)
+                    db.session.commit()
 
-    elif log_type == 'result' and current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG', True):
-        if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG_TO_DB', True):
-            db.session.add(node)
-            db.session.bulk_save_objects(process_result(data, node))
-            db.session.commit()
-        log_tee.handle_result(data, host_identifier=node.host_identifier)
-        analyze_result.delay(data, node.to_dict())
+    elif log_type == 'result':
+        if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG', True):
+            if current_app.config.get('DOORMAN_LOG_WSGI_PLUGIN_ENABLE_RESULT_LOG_TO_DB', True):
+                db.session.add(node)
+                db.session.bulk_save_objects(process_result(data, node))
+                db.session.commit()
+            log_tee.handle_result(data, host_identifier=node.host_identifier)
+            analyze_result.delay(data, node.to_dict())
 
     else:
         current_app.logger.error("%s - Unknown log_type %r",
