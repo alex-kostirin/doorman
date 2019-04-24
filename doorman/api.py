@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-from functools import wraps
-from io import BytesIO
 import datetime as dt
 import gzip
 import json
+from functools import wraps
+from io import BytesIO
 
 from flask import Blueprint, current_app, jsonify, request
 
 from doorman.database import db
-from doorman.extensions import log_tee
+from doorman.extensions import log_tee, tag_manager
 from doorman.models import (
     Node, Tag,
     DistributedQueryTask, DistributedQueryResult,
@@ -16,7 +16,6 @@ from doorman.models import (
 )
 from doorman.tasks import analyze_result, notify_of_node_enrollment
 from doorman.utils import process_result
-
 
 blueprint = Blueprint('api', __name__)
 
@@ -27,7 +26,7 @@ def node_required(f):
         # in v1.7.4, the Content-Encoding header is set when
         # --logger_tls_compress=true
         if 'Content-Encoding' in request.headers and \
-            request.headers['Content-Encoding'] == 'gzip':
+                request.headers['Content-Encoding'] == 'gzip':
             request._cached_data = gzip.GzipFile(
                 fileobj=BytesIO(request.get_data())).read()
 
@@ -68,6 +67,7 @@ def node_required(f):
         )
 
         return f(node=node, *args, **kwargs)
+
     return decorated_function
 
 
@@ -120,8 +120,8 @@ def enroll():
 
     if not node and enroll_secret not in current_app.config['DOORMAN_ENROLL_SECRET']:
         current_app.logger.error("%s - Invalid enroll_secret %s",
-            request.remote_addr, enroll_secret
-        )
+                                 request.remote_addr, enroll_secret
+                                 )
         return jsonify(node_invalid=True)
 
     host_identifier = request_json.get('host_identifier')
@@ -184,6 +184,7 @@ def enroll():
                     last_ip=request.remote_addr)
 
         enroll_tags.update(current_app.config.get('DOORMAN_ENROLL_DEFAULT_TAGS', []))
+        enroll_tags.update(tag_manager.handle_request(request_json))
 
         for value in sorted((t.strip() for t in enroll_tags if t)):
             tag = Tag.query.filter_by(value=value).first()
@@ -195,8 +196,8 @@ def enroll():
         node.save()
 
     current_app.logger.info("%s - Enrolled new node %s",
-        request.remote_addr, node
-    )
+                            request.remote_addr, node
+                            )
 
     notify_of_node_enrollment.delay(node.to_dict())
 
@@ -262,8 +263,8 @@ def logger(node=None):
 
     else:
         current_app.logger.error("%s - Unknown log_type %r",
-            request.remote_addr, log_type
-        )
+                                 request.remote_addr, log_type
+                                 )
         current_app.logger.info(json.dumps(data))
         # still need to write last_checkin, last_ip
         db.session.add(node)

@@ -48,6 +48,40 @@ class LogTee(object):
             plugin.handle_result(data, **kwargs)
 
 
+class TagManager(object):
+    def __init__(self, app=None):
+        self.app = app
+        self.plugins = []
+
+        if app is not None:
+            self.init_app(app)
+
+    def init_app(self, app):
+        from importlib import import_module
+        from doorman.plugins import AbstractTagsPlugin
+
+        plugins = app.config.setdefault('DOORMAN_ENROL_TAG_PLUGINS', [])
+
+        for plugin in plugins:
+            package, classname = plugin.rsplit('.', 1)
+            module = import_module(package)
+            klass = getattr(module, classname, None)
+
+            if klass is None:
+                raise ValueError('Could not find a class named "{0}" in package "{1}"'.format(classname, package))
+
+            if not issubclass(klass, AbstractTagsPlugin):
+                raise ValueError('{0} is not a subclass of AbstractTagsPlugin'.format(klass))
+
+            self.plugins.append(klass(app.config))
+
+    def handle_request(self, request, **kwargs):
+        result = []
+        for plugin in self.plugins:
+            result.extend(plugin.handle_request(request, **kwargs))
+        return result
+
+
 class RuleManager(object):
     def __init__(self, app=None):
         self.network = None
@@ -190,7 +224,6 @@ def make_celery(app, celery):
     TaskBase = celery.Task
 
     class ContextTask(TaskBase):
-
         abstract = True
 
         def __call__(self, *args, **kwargs):
@@ -208,6 +241,7 @@ mail = Mail()
 migrate = Migrate()
 debug_toolbar = DebugToolbarExtension()
 log_tee = LogTee()
+tag_manager = TagManager()
 ldap_manager = LDAP3LoginManager()
 login_manager = LoginManager()
 rule_manager = RuleManager()

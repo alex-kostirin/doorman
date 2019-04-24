@@ -43,6 +43,12 @@ class Config(object):
     DOORMAN_ENROLL_DEFAULT_TAGS = [
     ]
 
+    # You can use enrol tag plugins to gather tags from enrolment request dynamically
+    DOORMAN_ENROL_TAG_PLUGINS = []
+
+    # If using host identifier tag plugin provide here regex to capture tags with group tag
+    DOORMAN_ENROL_TAG_HOST_IDENTIFIER_REGEX = r'(?P<tag>.*)'
+
     DOORMAN_CAPTURE_NODE_INFO = [
         ('computer_name', 'name'),
         ('hardware_vendor', 'make'),
