@@ -10,7 +10,7 @@ class HostIdentifierTagsPlugin(AbstractTagsPlugin):
 
     def handle_request(self, request, **kwargs):
         host_identifier = request.get('host_identifier')
-        match = self._tags_regex.match(host_identifier)
+        match = self._tags_regex.fullmatch(host_identifier)
         if match:
             group_dict = match.groupdict()
             if 'tag' in group_dict:

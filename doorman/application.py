@@ -7,8 +7,8 @@ from doorman.api import blueprint as api
 from doorman.assets import assets
 from doorman.extensions import (
     bcrypt, csrf, db, debug_toolbar, ldap_manager, log_tee, login_manager,
-    mail, make_celery, migrate, rule_manager, sentry
-)
+    mail, make_celery, migrate, rule_manager, sentry,
+    tag_manager)
 from doorman.manage import blueprint as backend
 from doorman.settings import ProdConfig
 from doorman.tasks import celery
@@ -52,6 +52,7 @@ def register_extensions(app):
     assets.init_app(app)
     debug_toolbar.init_app(app)
     log_tee.init_app(app)
+    tag_manager.init_app(app)
     rule_manager.init_app(app)
     mail.init_app(app)
     make_celery(app, celery)
